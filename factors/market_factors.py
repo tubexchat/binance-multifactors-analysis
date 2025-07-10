@@ -231,8 +231,8 @@ class MarketFactors:
         factors = pd.DataFrame()
 
         try:
-            # 确保索引对齐，创建基于原始数据索引的因子DataFrame
-            factors = factors.reindex(df.index)
+            # 创建基于原始数据索引的因子DataFrame
+            factors = pd.DataFrame(index=df.index)
 
             # 收益率因子
             close = df["close"]
@@ -261,9 +261,9 @@ class MarketFactors:
             # 修复volume_volatility计算，确保分母不为0
             volume_ma_12 = volume.rolling(12).mean()
             volume_std_12 = volume.rolling(12).std()
-            factors["volume_volatility"] = np.where(
-                volume_ma_12 > 0, volume_std_12 / volume_ma_12, np.nan
-            )
+            # 直接计算并赋值，避免形状问题
+            factors["volume_volatility"] = volume_std_12 / volume_ma_12
+            factors["volume_volatility"] = factors["volume_volatility"].fillna(np.nan)
 
             # VWAP相关因子
             typical_price = (df["high"] + df["low"] + df["close"]) / 3
@@ -282,9 +282,9 @@ class MarketFactors:
 
             # 修复close_position计算，避免除零错误
             high_low_diff = df["high"] - df["low"]
-            factors["close_position"] = np.where(
-                high_low_diff > 0, (df["close"] - df["low"]) / high_low_diff, np.nan
-            )
+            # 直接计算并赋值，避免形状问题
+            factors["close_position"] = (df["close"] - df["low"]) / high_low_diff
+            factors["close_position"] = factors["close_position"].fillna(np.nan)
 
             # 成交量价格趋势
             price_change_ratio = (df["close"] - df["close"].shift(1)) / df[

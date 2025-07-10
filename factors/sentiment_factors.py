@@ -226,8 +226,9 @@ class SentimentFactors:
             # 成交量相对强度
             factors["volume_relative_strength"] = volume_series / volume_ma
 
-            # 成交量波动率
-            factors["volume_volatility"] = factors["volume_change"].rolling(10).std()
+            # 成交量波动率 - 确保索引对齐
+            volume_volatility = factors["volume_change"].rolling(10).std()
+            factors["volume_volatility"] = volume_volatility
 
         except Exception as e:
             logger.error(f"计算成交量情绪因子时出错: {e}")
@@ -267,9 +268,10 @@ class SentimentFactors:
             factors["doji"] = (body_size < (high_series - low_series) * 0.1).astype(int)
 
             # 收盘价位置（反映多空力量对比）
-            factors["close_position"] = (close_series - low_series) / (
-                high_series - low_series
-            )
+            high_low_diff = high_series - low_series
+            # 直接计算并赋值，避免形状问题
+            factors["close_position"] = (close_series - low_series) / high_low_diff
+            factors["close_position"] = factors["close_position"].fillna(np.nan)
 
             # 价格拒绝（价格试探但被拉回）
             factors["price_rejection_up"] = (

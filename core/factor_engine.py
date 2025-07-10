@@ -219,9 +219,13 @@ class FactorEngine:
         """合并因子数据"""
         try:
             if df1.empty:
-                return df2
+                return self._validate_merge_data(df2)
             if df2.empty:
-                return df1
+                return self._validate_merge_data(df1)
+
+            # 在合并前验证数据形状
+            df1 = self._validate_merge_data(df1)
+            df2 = self._validate_merge_data(df2)
 
             # 确保有相同的索引长度
             if len(df1) != len(df2):
@@ -229,21 +233,65 @@ class FactorEngine:
                 df1 = df1.iloc[:min_len].copy()
                 df2 = df2.iloc[:min_len].copy()
 
+            # 处理重复列名，避免多维数组问题
+            df2_to_merge = df2.drop(columns=["timestamp"], errors="ignore")
+
+            # 找出重复的列名
+            duplicate_cols = set(df1.columns).intersection(set(df2_to_merge.columns))
+            if duplicate_cols:
+                logger.info(
+                    f"检测到重复列: {list(duplicate_cols)}，将优先保留第一个数据源的版本"
+                )
+                # 从df2中移除重复的列，保留df1中的版本
+                df2_to_merge = df2_to_merge.drop(
+                    columns=list(duplicate_cols), errors="ignore"
+                )
+
             # 合并DataFrame
-            result = pd.concat(
-                [df1, df2.drop(columns=["timestamp"], errors="ignore")], axis=1
-            )
+            result = pd.concat([df1, df2_to_merge], axis=1)
             return result
 
         except Exception as e:
             logger.error(f"合并因子数据时出错: {e}")
             return df1
 
+    def _validate_merge_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """验证合并前的数据形状"""
+        try:
+            if df.empty:
+                return df
+
+            # 检查每列是否为多维数据
+            columns_to_drop = []
+            for col in df.columns:
+                if col == "timestamp":
+                    continue
+
+                col_data = df[col]
+                if hasattr(col_data, "shape") and len(col_data.shape) > 1:
+                    logger.warning(
+                        f"发现多维因子数据 {col}，形状: {col_data.shape}，将在合并时移除"
+                    )
+                    columns_to_drop.append(col)
+
+            # 移除多维列
+            if columns_to_drop:
+                df = df.drop(columns=columns_to_drop)
+
+            return df
+
+        except Exception as e:
+            logger.error(f"验证合并数据时出错: {e}")
+            return df
+
     def _clean_factor_data(self, factors: pd.DataFrame) -> pd.DataFrame:
         """清理因子数据"""
         try:
             # 移除全为NaN的列
             factors = factors.dropna(axis=1, how="all")
+
+            # 确保所有因子列的形状一致
+            factors = self._validate_factor_shapes(factors)
 
             # 处理无穷大值
             factors = factors.replace([np.inf, -np.inf], np.nan)
@@ -267,6 +315,81 @@ class FactorEngine:
 
         except Exception as e:
             logger.error(f"清理因子数据时出错: {e}")
+            return factors
+
+    def _validate_factor_shapes(self, factors: pd.DataFrame) -> pd.DataFrame:
+        """验证因子数据形状一致性"""
+        try:
+            if factors.empty:
+                return factors
+
+            # 获取期望的数据长度（通常以DataFrame的索引为准）
+            expected_length = len(factors)
+
+            # 检查每列的长度和数据类型
+            for col in factors.columns:
+                if col == "timestamp":
+                    continue
+
+                col_data = factors[col]
+
+                # 检查数据是否为多维
+                if hasattr(col_data, "shape") and len(col_data.shape) > 1:
+                    logger.warning(
+                        f"因子 {col} 是多维数据，形状: {col_data.shape}，将其移除"
+                    )
+                    factors = factors.drop(columns=[col])
+                    continue
+
+                # 确保列数据是Series类型且与DataFrame索引对齐
+                if not isinstance(col_data, pd.Series):
+                    try:
+                        # 检查是否为多维数组
+                        if hasattr(col_data, "shape") and len(col_data.shape) > 1:
+                            logger.warning(
+                                f"因子 {col} 是多维数组，形状: {col_data.shape}，将其移除"
+                            )
+                            factors = factors.drop(columns=[col])
+                            continue
+                        # 尝试转换为Series
+                        factors[col] = pd.Series(col_data, index=factors.index)
+                    except Exception as e:
+                        logger.warning(f"修复因子列 {col} 数据类型失败: {e}")
+                        factors = factors.drop(columns=[col])
+                        continue
+
+                # 检查长度是否一致
+                if len(col_data) != expected_length:
+                    logger.warning(
+                        f"因子 {col} 长度 {len(col_data)} 与期望长度 {expected_length} 不匹配，尝试修复"
+                    )
+                    try:
+                        # 重新创建与索引对齐的Series
+                        if len(col_data) > expected_length:
+                            # 如果数据过长，截取前面部分
+                            factors[col] = pd.Series(
+                                col_data.iloc[:expected_length], index=factors.index
+                            )
+                        else:
+                            # 如果数据过短，用NaN填充
+                            new_data = np.full(expected_length, np.nan)
+                            new_data[: len(col_data)] = col_data.values
+                            factors[col] = pd.Series(new_data, index=factors.index)
+                    except Exception:
+                        logger.warning(f"无法修复因子 {col}，将其移除")
+                        factors = factors.drop(columns=[col])
+
+                # 确保数值型列，尝试转换非数值类型
+                try:
+                    factors[col] = pd.to_numeric(factors[col], errors="coerce")
+                except Exception:
+                    logger.warning(f"因子 {col} 无法转换为数值类型，将其移除")
+                    factors = factors.drop(columns=[col])
+
+            return factors
+
+        except Exception as e:
+            logger.error(f"验证因子数据形状时出错: {e}")
             return factors
 
     def _is_cache_valid(self, symbol: str) -> bool:
