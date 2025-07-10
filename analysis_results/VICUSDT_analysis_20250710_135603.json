@@ -1,0 +1,11 @@
+{
+  "symbol": "VICUSDT",
+  "analysis_timestamp": "2025-07-10T13:56:03.501888",
+  "data_period": {
+    "start_time": "2025-06-29T20:00:00",
+    "end_time": "2025-07-10T05:45:00",
+    "total_periods": 1000
+  },
+  "factors": [
+    {
+      "timestamp": 
