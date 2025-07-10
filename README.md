@@ -35,9 +35,6 @@ python main.py --batch-symbols BTC,ETH,BNB
 
 ## 📚 详细文档
 
-完整的使用指南、因子说明和配置选项请参考：
-**[📖 完整文档 - README_MULTIFACTOR.md](./README_MULTIFACTOR.md)**
-
 ## 🏗️ 系统架构
 
 ```
