@@ -1,10 +1,12 @@
-# Binance Multi-Factor Analysis Platform
+# Binance Multi-Factor AI Analysis Platform
 
 🚀 **专业的加密货币多因子分析平台，专注于IC（信息系数）相关性分析**
 
 ## 🎯 项目概述
 
 这是一个基于Python的量化分析平台，专门用于分析加密货币市场的多种因子与未来收益的相关性。系统采用15分钟标准化数据，提供64种技术、市场和情绪因子的综合分析。
+
+本项目Pro版本为基于机器学习模型对币价走势的预测，仅作为学习目的。
 
 > ⚠️ 中国大陆用户需要启动VPN，并将VPN IP地址配置进币安API管理页面中。
 
