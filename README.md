@@ -31,6 +31,19 @@ python main.py --symbol BTCUSDT
 
 # 运行批量分析
 python main.py --batch-symbols BTC,ETH,BNB
+
+# Pro版本如下：
+# 1. 演示系统（推荐首次使用）
+python demo_strategy.py
+
+# 2. 分析单个交易对
+python strategies/strategy_main.py --symbol BTCUSDT
+
+# 3. 批量分析主要交易对  
+python strategies/strategy_main.py --major
+
+# 4. 自定义参数分析
+python strategies/strategy_main.py --symbol ETHUSDT --ic-threshold 0.08 --top-factors 3
 ```
 
 ## 📚 详细文档
