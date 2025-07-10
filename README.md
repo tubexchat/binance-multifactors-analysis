@@ -1,4 +1,4 @@
-# Binance Multi-Factor AI Analysis Platform
+# Binance Multi-Factors AI Analysis Platform
 
 🚀 **专业的加密货币多因子分析平台，专注于IC（信息系数）相关性分析**
 
